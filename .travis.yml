@@ -146,10 +146,19 @@ jobs:
     skip_cleanup: true
     provider: firebase
     project: ngx-bootstrap-demo
-    before_script: npm install firebase-tools -g
+    before_script:
+      - sudo apt-get install jq
+      - npm install firebase-tools -g
     script: npm run demo.ng-build
     after_success:
       - firebase hosting:channel:deploy pr-$TRAVIS_PULL_REQUEST --expires 30d --token $FIREBASE_TOKEN --json
+      - RESULT=`echo ${TEST_OUTPUT} | jq -r '.result'`
+      - NGX_BOOTSTRAP_DEMO=`echo ${RESULT} | jq -r '."ngx-bootstrap-demo"'`
+      - SITE=`echo ${NGX_BOOTSTRAP_DEMO} | jq -r .site`
+      - URL=`echo ${NGX_BOOTSTRAP_DEMO} | jq -r .url`
+      - EXPIRE_TIME=`echo ${NGX_BOOTSTRAP_DEMO} | jq -r .expireTime`
+      - COMMENT="Project - $SITE \n Url - $URL \n This link will expired at $EXPIRE_TIME"
+      - curl -H "Authorization: token $GITHUB_TOKEN" -X POST -d "{\"body\": \"$COMMENT\"}" "https://api.github.com/repos/${TRAVIS_REPO_SLUG}/issues/${TRAVIS_PULL_REQUEST}/comments"
 
   - &surge
     stage: deploy
